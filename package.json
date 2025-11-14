@@ -1,46 +1,28 @@
-/**
- * AZRAEL — WhatsApp Group Management Bot
- * Simplified version for Railway troubleshooting
- */
-
-console.log('🚀 Starting AZRAEL bot...');
-
-const express = require('express');
-const app = express();
-
-// Basic route to test if server works
-app.get('/', (req, res) => {
-  res.send(`
-    <html>
-      <head><title>AZRAEL Bot</title></head>
-      <body>
-        <h1>AZRAEL WhatsApp Bot</h1>
-        <p>Status: Server is running!</p>
-        <p>If you can see this, the basic server is working.</p>
-        <p>Next step: WhatsApp connection...</p>
-      </body>
-    </html>
-  `);
-});
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
-});
-
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`✅ Server is running on port ${PORT}`);
-  console.log(`🌐 Test URL: http://localhost:${PORT}`);
-  console.log(`🏥 Health check: http://localhost:${PORT}/health`);
-});
-
-// Basic error handling
-process.on('uncaughtException', (error) => {
-  console.error('❌ Uncaught Exception:', error);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
-});
+{
+  "name": "azrael-group-bot",
+  "version": "1.0.0",
+  "description": "WhatsApp Group Management Bot",
+  "main": "azrael.js",
+  "scripts": {
+    "start": "node azrael.js",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "6.3.1",
+    "qrcode": "^1.5.3",
+    "qrcode-terminal": "^0.12.0",
+    "express": "^4.18.2",
+    "@hapi/boom": "^10.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "whatsapp",
+    "bot",
+    "group",
+    "management"
+  ],
+  "author": "AZRAEL",
+  "license": "MIT"
+}
