@@ -1,0 +1,31 @@
+{
+  "owner": "923299132452",
+  "botName": "AZRAEL-GROUP",
+  "groupName": "VU (ALL SEM) STUDENTS 🤯 💯 ✅",
+  "groupRulesText": "📌 All Subjects Assignment Available\n📌 All Subjects GDB Solution Available\n📌 All Subjects Quiz Available\n📌 Lecture Views Assistance\n🎯 With 80 to 100% Guaranteed Marks\n\nGroup Rules:\n✅ No one, except the admins, can share links.\n✅ Avoid off-topic conversations in the chat.\n✅ Behave respectfully; misbehavior is not allowed.\n✅ Do not send private messages to anyone, whether they are boys or girls, without their permission.\n✅ Share only study-related content like assignments, quizzes, GDBs, and past papers.\n\n📌 Note: If no one is helping you in the group, you can mention or DM the admin for any help regarding study.",
+  
+  "warnLimit": 3,
+  "instantWarnOnLink": true,
+  "instantWarnOnSticker": false,
+  "instantWarnOnMedia": false,
+
+  "whitelist": [],
+
+  "floodControl": {
+    "enabled": true,
+    "maxMessagesPerWindow": 6,
+    "windowSeconds": 10
+  },
+
+  "quietHours": {
+    "enabled": true,
+    "startHourKarachi": 0,
+    "endHourKarachi": 5,
+    "reminderMessage": "🔕 Quiet hours active. Please avoid sending messages."
+  },
+
+  "logging": {
+    "enabled": true,
+    "file": "moderation_log.txt"
+  }
+}
