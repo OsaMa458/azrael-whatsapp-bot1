@@ -4,7 +4,8 @@
   "description": "WhatsApp Group Management Bot",
   "main": "azrael.js",
   "scripts": {
-    "start": "node azrael.js"
+    "start": "node azrael.js",
+    "test": "echo \"No tests specified\" && exit 0"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "6.3.1",
@@ -15,5 +16,8 @@
   },
   "engines": {
     "node": ">=18.0.0"
-  }
+  },
+  "keywords": ["whatsapp", "bot", "group", "management"],
+  "author": "AZRAEL",
+  "license": "MIT"
 }
