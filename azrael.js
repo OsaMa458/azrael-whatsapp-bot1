@@ -1,16 +1,28 @@
 /**
- * AZRAEL — WhatsApp Group Management Bot with Baileys v5
- * Compatible with Node.js 16+
+ * AZRAEL — WhatsApp Group Management Bot with Baileys
+ * Optimized for Railway deployment
  */
 
 const fs = require('fs');
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, makeCacheableSignalKeyStore } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode-terminal');
 const express = require('express');
 const { Boom } = require('@hapi/boom');
 
 // Load config
 const cfg = JSON.parse(fs.readFileSync('./config.json', 'utf8'));
+
+// Create a proper logger object
+const logger = {
+  level: 'silent',
+  trace: () => {},
+  debug: () => {},
+  info: () => {},
+  warn: () => {},
+  error: () => {},
+  fatal: () => {},
+  child: () => logger
+};
 
 // Helpers
 function normNumber(n) {
@@ -83,11 +95,16 @@ let sock;
 
 async function connectToWhatsApp() {
   const { state, saveCreds } = await useMultiFileAuthState('./auth_info');
+  const { version } = await fetchLatestBaileysVersion();
   
   sock = makeWASocket({
-    auth: state,
+    version,
+    auth: {
+      creds: state.creds,
+      keys: makeCacheableSignalKeyStore(state.keys, {}),
+    },
     printQRInTerminal: false,
-    logger: { level: 'silent' }
+    logger: logger
   });
 
   sock.ev.on('connection.update', (update) => {
@@ -122,7 +139,8 @@ async function connectToWhatsApp() {
       if (!chatId.endsWith('@g.us')) return;
 
       const body = msg.message.conversation || 
-                   msg.message.extendedTextMessage?.text || '';
+                   msg.message.extendedTextMessage?.text || 
+                   msg.message.imageMessage?.caption || '';
 
       if (!body.trim()) return;
 
