@@ -6,8 +6,8 @@
   
   "warnLimit": 3,
   "instantWarnOnLink": true,
-  "instantWarnOnSticker": false,
-  "instantWarnOnMedia": false,
+  "instantWarnOnSticker": true,
+  "instantWarnOnMedia": true,
 
   "whitelist": [],
 
