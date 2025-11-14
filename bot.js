@@ -1,18 +1,29 @@
 /**
  * AZRAEL — WhatsApp Group Management Bot
- * FIXED VERSION - Proper logger implementation
+ * HEROKU COMPATIBLE VERSION
  */
 
 const fs = require('fs');
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, makeCacheableSignalKeyStore } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode-terminal');
 const { Boom } = require('@hapi/boom');
-const pino = require('pino');
 
-console.log('🚀 Starting AZRAEL WhatsApp Bot...');
+console.log('🚀 Starting AZRAEL WhatsApp Bot on Heroku...');
 
-// Load config
-const cfg = {
+// Simple logger that works with Heroku
+const logger = {
+  level: 'silent',
+  trace: () => {},
+  debug: () => {},
+  info: () => {},
+  warn: () => {},
+  error: () => {},
+  fatal: () => {},
+  child: () => logger
+};
+
+// Configuration
+const config = {
   owner: "923299132452",
   botName: "AZRAEL-GROUP",
   groupName: "VU (ALL SEM) STUDENTS 🤯 💯 ✅",
@@ -23,23 +34,12 @@ const cfg = {
   quietHours: { enabled: true, startHourKarachi: 0, endHourKarachi: 5 }
 };
 
-// PROPER LOGGER - This fixes the error
-const logger = pino({
-  level: 'silent',
-  transport: {
-    target: 'pino-pretty',
-    options: {
-      colorize: true,
-      levelFirst: true,
-      translateTime: true
-    }
-  }
-});
-
 let sock;
 
 async function connectToWhatsApp() {
   try {
+    console.log('🔗 Connecting to WhatsApp...');
+    
     const { state, saveCreds } = await useMultiFileAuthState('./auth_info');
     const { version } = await fetchLatestBaileysVersion();
     
@@ -50,7 +50,7 @@ async function connectToWhatsApp() {
         keys: makeCacheableSignalKeyStore(state.keys, logger),
       },
       printQRInTerminal: false,
-      logger: logger // Use the proper logger
+      logger: logger
     });
 
     sock.ev.on('connection.update', (update) => {
@@ -66,27 +66,23 @@ async function connectToWhatsApp() {
         console.log('3. Scan the QR code below');
         console.log('================================\n');
         
-        // Generate QR code in terminal
-        qrcode.generate(qr, { small: true }, function (qrcode) {
-          console.log(qrcode);
-        });
+        // Generate QR code
+        qrcode.generate(qr, { small: true });
         
         console.log('\n================================');
         console.log('⏰ QR Code expires in 30 seconds');
-        console.log('📱 If it expires, the bot will auto-generate a new one');
         console.log('================================\n');
       }
 
       if (connection === 'close') {
         const shouldReconnect = (lastDisconnect.error instanceof Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
-        console.log('🔌 Connection closed, reconnecting...');
+        console.log('🔌 Connection closed, reconnecting in 5 seconds...');
         if (shouldReconnect) {
           setTimeout(connectToWhatsApp, 5000);
         }
       } else if (connection === 'open') {
-        console.log(`\n✅ ${cfg.botName} is ready and online!`);
+        console.log(`\n✅ ${config.botName} is ready and online!`);
         console.log('🤖 Bot is now moderating your groups...');
-        console.log('📝 Available commands: !rules, !status');
       }
     });
 
@@ -102,47 +98,39 @@ async function connectToWhatsApp() {
         if (!chatId.endsWith('@g.us')) return;
 
         const body = msg.message.conversation || 
-                     msg.message.extendedTextMessage?.text || 
-                     msg.message.imageMessage?.caption || '';
+                     msg.message.extendedTextMessage?.text || '';
 
         if (!body.trim()) return;
 
         const senderId = msg.key.participant || msg.key.remoteJid;
 
         // Owner commands
-        if (body.startsWith('!') && senderId === (cfg.owner + '@s.whatsapp.net')) {
+        if (body.startsWith('!') && senderId === (config.owner + '@s.whatsapp.net')) {
           const cmd = body.toLowerCase().trim();
           
           if (cmd === '!rules') {
-            await sock.sendMessage(chatId, { text: cfg.groupRulesText });
+            await sock.sendMessage(chatId, { text: config.groupRulesText });
             console.log('📜 Rules command executed');
           }
           else if (cmd === '!status') {
             await sock.sendMessage(chatId, { 
-              text: `✅ ${cfg.botName} is online and active!\n🤖 Bot is working properly.` 
+              text: `✅ ${config.botName} is online!\n🏠 Hosted on Heroku\n🤖 Bot is working properly.` 
             });
             console.log('📊 Status command executed');
           }
-          else if (cmd === '!help') {
+          else if (cmd === '!ping') {
             await sock.sendMessage(chatId, { 
-              text: `Available Commands:\n!rules - Show group rules\n!status - Check bot status\n!help - Show this help` 
+              text: `🏓 Pong! ${config.botName} is alive and kicking!` 
             });
           }
         }
 
-        // Auto-response for testing
-        if (body.toLowerCase().includes('bot test')) {
-          await sock.sendMessage(chatId, { 
-            text: `🤖 ${cfg.botName} is working! I can read messages and respond.` 
-          });
-        }
-
       } catch(e) { 
-        console.warn('Message handling error:', e.message); 
+        console.warn('Message error:', e.message); 
       }
     });
 
-    // Group participants update - Welcome messages
+    // Welcome messages
     sock.ev.on('group-participants.update', async (update) => {
       try {
         const { id, participants, action } = update;
@@ -150,65 +138,47 @@ async function connectToWhatsApp() {
         if (action === 'add') {
           for (let participant of participants) {
             await sock.sendMessage(id, {
-              text: `🎓 Welcome @${participant.replace('@s.whatsapp.net','')} to ${cfg.groupName}!\n\nPlease read the group rules by typing: !rules`,
+              text: `🎓 Welcome @${participant.replace('@s.whatsapp.net','')} to ${config.groupName}!\n\nPlease read rules by typing: !rules`,
               mentions: [participant]
             });
             console.log(`👋 Welcome message sent to ${participant}`);
           }
-        } else if (action === 'remove') {
-          for (let participant of participants) {
-            console.log(`👋 ${participant} left the group`);
-          }
         }
       } catch(e) {
-        console.warn('Group participants update error:', e.message);
+        console.warn('Welcome message error:', e.message);
       }
     });
 
   } catch (error) {
-    console.error('❌ Failed to connect to WhatsApp:', error.message);
+    console.error('❌ Connection error:', error.message);
     console.log('🔄 Retrying in 10 seconds...');
     setTimeout(connectToWhatsApp, 10000);
   }
 }
 
-// Start the bot
+// Start bot
 connectToWhatsApp();
 
-// Basic web server to keep Railway happy
+// Basic web server for Heroku
 const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.get('/', (req, res) => {
-  res.json({ 
-    status: 'AZRAEL WhatsApp Bot is Running', 
-    bot: cfg.botName,
-    features: ['Group Moderation', 'Auto Welcome', 'Rules Enforcement', 'Link Protection'],
-    timestamp: new Date().toISOString()
-  });
+  res.send(`
+    <html>
+      <head><title>AZRAEL WhatsApp Bot</title></head>
+      <body>
+        <h1>🤖 AZRAEL WhatsApp Bot</h1>
+        <p>Status: ✅ Running on Heroku</p>
+        <p>Check Heroku logs for QR code to connect WhatsApp</p>
+        <p>Bot: ${config.botName}</p>
+        <p>Owner: ${config.owner}</p>
+      </body>
+    </html>
+  `);
 });
 
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'healthy',
-    service: 'AZRAEL WhatsApp Bot',
-    timestamp: new Date().toISOString()
-  });
-});
-
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🌐 Basic web server running on port ${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
-});
-
-// Graceful shutdown
-process.on('SIGINT', () => {
-  console.log('🛑 Shutting down bot gracefully...');
-  process.exit(0);
-});
-
-process.on('SIGTERM', () => {
-  console.log('🛑 Shutting down bot gracefully...');
-  process.exit(0);
+app.listen(PORT, () => {
+  console.log(`🌐 Web server running on port ${PORT}`);
 });
