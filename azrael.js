@@ -122,7 +122,12 @@ async function connectToWhatsApp() {
         
         console.log('✅ QR Code image generated successfully!');
         console.log('📱 Open the web dashboard to scan the QR code');
-        console.log(`🌐 Dashboard: http://localhost:${process.env.PORT || 3000}`);
+        
+        // Get public URL for Railway
+        const publicUrl = process.env.RAILWAY_STATIC_URL || 
+                         process.env.RAILWAY_PUBLIC_DOMAIN || 
+                         `http://localhost:${PORT}`;
+        console.log(`🌐 Dashboard: ${publicUrl}`);
       } catch (error) {
         console.error('❌ Error generating QR code:', error.message);
         // Fallback to terminal QR
@@ -327,6 +332,11 @@ app.get('/', (req, res) => {
     `;
   }
   
+  // Get public URL for display
+  const publicUrl = process.env.RAILWAY_STATIC_URL || 
+                   process.env.RAILWAY_PUBLIC_DOMAIN || 
+                   `http://localhost:${PORT}`;
+  
   res.send(`
     <!DOCTYPE html>
     <html lang="en">
@@ -391,6 +401,13 @@ app.get('/', (req, res) => {
             color: #666;
             font-size: 1.1em;
           }
+          .url-info {
+            background: #e7f3ff;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            word-break: break-all;
+          }
         </style>
       </head>
       <body>
@@ -398,6 +415,9 @@ app.get('/', (req, res) => {
           <div class="header">
             <h1>${BOT_NAME}</h1>
             <p>WhatsApp Group Management Bot</p>
+            <div class="url-info">
+              <strong>Public URL:</strong> ${publicUrl}
+            </div>
           </div>
           
           ${qrHtml}
@@ -448,9 +468,15 @@ app.get('/', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n🚀 ${BOT_NAME} server running on port ${PORT}`);
-  console.log(`🌐 Web dashboard: http://localhost:${PORT}`);
+  
+  // Get public URL for Railway
+  const publicUrl = process.env.RAILWAY_STATIC_URL || 
+                   process.env.RAILWAY_PUBLIC_DOMAIN || 
+                   `http://localhost:${PORT}`;
+  console.log(`🌐 Public Dashboard: ${publicUrl}`);
+  
   console.log('\n📱 QR Code will appear on the web dashboard when ready...\n');
   connectToWhatsApp();
 });
