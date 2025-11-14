@@ -92,6 +92,7 @@ function getKarachiHour() {
 }
 
 let sock;
+let currentQR = '';
 
 async function connectToWhatsApp() {
   const { state, saveCreds } = await useMultiFileAuthState('./auth_info');
@@ -111,8 +112,10 @@ async function connectToWhatsApp() {
     const { connection, lastDisconnect, qr } = update;
     
     if (qr) {
-      console.log('QR Code received, scan it!');
+      console.log('\n\n🔐 QR Code received, scan it within 30 seconds!');
       qrcode.generate(qr, { small: true });
+      currentQR = qr;
+      console.log('\n📱 Scan the QR code above with WhatsApp -> Linked Devices\n');
     }
 
     if (connection === 'close') {
@@ -122,7 +125,8 @@ async function connectToWhatsApp() {
         setTimeout(connectToWhatsApp, 5000);
       }
     } else if (connection === 'open') {
-      console.log(`${BOT_NAME} is ready and online!`);
+      console.log(`\n✅ ${BOT_NAME} is ready and online!`);
+      currentQR = ''; // Clear QR after successful connection
     }
   });
 
@@ -276,14 +280,37 @@ async function connectToWhatsApp() {
 // Keep-alive server
 const app = express();
 app.get('/', (req, res) => {
+  let qrHtml = '';
+  if (currentQR) {
+    qrHtml = `
+      <div style="margin: 20px 0; padding: 15px; background: #f5f5f5; border-radius: 10px;">
+        <h3>📱 QR Code Available</h3>
+        <p>Check the server logs/terminal to scan the QR code and connect your WhatsApp.</p>
+        <p><strong>Instructions:</strong> Open WhatsApp → Settings → Linked Devices → Scan QR Code</p>
+      </div>
+    `;
+  }
+  
   res.send(`
     <html>
-      <head><title>${BOT_NAME} Group Bot</title></head>
+      <head>
+        <title>${BOT_NAME} Group Bot</title>
+        <style>
+          body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+          .status { padding: 10px; border-radius: 5px; margin: 10px 0; }
+          .connected { background: #d4edda; color: #155724; }
+          .disconnected { background: #f8d7da; color: #721c24; }
+        </style>
+      </head>
       <body>
         <h1>${BOT_NAME} WhatsApp Group Management Bot</h1>
-        <p>Status: Running</p>
+        <div class="status ${currentQR ? 'disconnected' : 'connected'}">
+          Status: ${currentQR ? 'Waiting for QR Scan' : 'Connected & Running'}
+        </div>
+        ${qrHtml}
         <p>Warnings stored: ${Object.keys(warnings).length}</p>
-        <p>Scan the QR code in logs to connect.</p>
+        <p>Group: ${cfg.groupName || 'Not specified'}</p>
+        <p>Owner: ${cfg.owner}</p>
       </body>
     </html>
   `);
@@ -291,8 +318,9 @@ app.get('/', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 ${BOT_NAME} server running on port ${PORT}`);
-  console.log('📱 Scan the QR code below to connect WhatsApp:');
+  console.log(`\n🚀 ${BOT_NAME} server running on port ${PORT}`);
+  console.log(`🌐 Web dashboard: http://localhost:${PORT}`);
+  console.log('\n📱 Waiting for QR code generation...\n');
   connectToWhatsApp();
 });
 
