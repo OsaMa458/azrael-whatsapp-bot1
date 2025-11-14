@@ -1,10 +1,10 @@
 /**
- * AZRAEL — WhatsApp Group Management Bot with Baileys
- * Optimized for Railway deployment
+ * AZRAEL — WhatsApp Group Management Bot with Baileys v5
+ * Compatible with Node.js 16+
  */
 
 const fs = require('fs');
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, makeCacheableSignalKeyStore } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode-terminal');
 const express = require('express');
 const { Boom } = require('@hapi/boom');
@@ -83,14 +83,9 @@ let sock;
 
 async function connectToWhatsApp() {
   const { state, saveCreds } = await useMultiFileAuthState('./auth_info');
-  const { version } = await fetchLatestBaileysVersion();
   
   sock = makeWASocket({
-    version,
-    auth: {
-      creds: state.creds,
-      keys: makeCacheableSignalKeyStore(state.keys, {}),
-    },
+    auth: state,
     printQRInTerminal: false,
     logger: { level: 'silent' }
   });
@@ -127,8 +122,7 @@ async function connectToWhatsApp() {
       if (!chatId.endsWith('@g.us')) return;
 
       const body = msg.message.conversation || 
-                   msg.message.extendedTextMessage?.text || 
-                   msg.message.imageMessage?.caption || '';
+                   msg.message.extendedTextMessage?.text || '';
 
       if (!body.trim()) return;
 
