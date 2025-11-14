@@ -5,9 +5,10 @@
 
 const fs = require('fs');
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, makeCacheableSignalKeyStore } = require('@whiskeysockets/baileys');
-const qrcode = require('qrcode-terminal');
+const qrcode = require('qrcode');
 const express = require('express');
 const { Boom } = require('@hapi/boom');
+const path = require('path');
 
 // Load config
 const cfg = JSON.parse(fs.readFileSync('./config.json', 'utf8'));
@@ -108,14 +109,27 @@ async function connectToWhatsApp() {
     logger: logger
   });
 
-  sock.ev.on('connection.update', (update) => {
+  sock.ev.on('connection.update', async (update) => {
     const { connection, lastDisconnect, qr } = update;
     
     if (qr) {
-      console.log('\n\n🔐 QR Code received, scan it within 30 seconds!');
-      qrcode.generate(qr, { small: true });
-      currentQR = qr;
-      console.log('\n📱 Scan the QR code above with WhatsApp -> Linked Devices\n');
+      console.log('\n\n🔐 QR Code received, generating image...');
+      
+      try {
+        // Generate QR code as data URL
+        const qrImageUrl = await qrcode.toDataURL(qr);
+        currentQR = qrImageUrl;
+        
+        console.log('✅ QR Code image generated successfully!');
+        console.log('📱 Open the web dashboard to scan the QR code');
+        console.log(`🌐 Dashboard: http://localhost:${process.env.PORT || 3000}`);
+      } catch (error) {
+        console.error('❌ Error generating QR code:', error.message);
+        // Fallback to terminal QR
+        const qrcodeTerminal = require('qrcode-terminal');
+        qrcodeTerminal.generate(qr, { small: true });
+        console.log('\n📱 Scan the QR code above with WhatsApp -> Linked Devices\n');
+      }
     }
 
     if (connection === 'close') {
@@ -279,38 +293,155 @@ async function connectToWhatsApp() {
 
 // Keep-alive server
 const app = express();
+
+// Serve static files if needed
+app.use(express.static('public'));
+
 app.get('/', (req, res) => {
   let qrHtml = '';
   if (currentQR) {
     qrHtml = `
-      <div style="margin: 20px 0; padding: 15px; background: #f5f5f5; border-radius: 10px;">
-        <h3>📱 QR Code Available</h3>
-        <p>Check the server logs/terminal to scan the QR code and connect your WhatsApp.</p>
-        <p><strong>Instructions:</strong> Open WhatsApp → Settings → Linked Devices → Scan QR Code</p>
+      <div style="margin: 20px 0; padding: 20px; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center;">
+        <h3 style="color: #25D366; margin-bottom: 15px;">📱 Scan QR Code to Connect WhatsApp</h3>
+        <img src="${currentQR}" alt="WhatsApp QR Code" style="max-width: 300px; width: 100%; border: 2px solid #25D366; border-radius: 10px;" />
+        <div style="margin-top: 15px; background: #f8f9fa; padding: 15px; border-radius: 5px;">
+          <h4>Instructions:</h4>
+          <ol style="text-align: left; display: inline-block;">
+            <li>Open WhatsApp on your phone</li>
+            <li>Tap <strong>Settings</strong> → <strong>Linked Devices</strong></li>
+            <li>Tap <strong>Link a Device</strong></li>
+            <li>Point your phone at this QR code to scan</li>
+          </ol>
+        </div>
+        <p style="margin-top: 10px; color: #666; font-size: 12px;">
+          QR code will expire in 30 seconds. Refresh page if needed.
+        </p>
+      </div>
+    `;
+  } else {
+    qrHtml = `
+      <div style="margin: 20px 0; padding: 15px; background: #d4edda; color: #155724; border-radius: 5px;">
+        <h3>✅ WhatsApp Connected</h3>
+        <p>Your WhatsApp is successfully connected to ${BOT_NAME}.</p>
       </div>
     `;
   }
   
   res.send(`
-    <html>
-      <head>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>${BOT_NAME} Group Bot</title>
         <style>
-          body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-          .status { padding: 10px; border-radius: 5px; margin: 10px 0; }
-          .connected { background: #d4edda; color: #155724; }
-          .disconnected { background: #f8d7da; color: #721c24; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+          }
+          .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+          }
+          .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+          }
+          .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.2em;
+          }
+          .header p {
+            color: #666;
+            font-size: 1.1em;
+          }
+          .status-card {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            background: #f8f9fa;
+          }
+          .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+          }
+          .info-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+          }
+          .info-item h4 {
+            color: #333;
+            margin-bottom: 5px;
+          }
+          .info-item p {
+            color: #666;
+            font-size: 1.1em;
+          }
         </style>
       </head>
       <body>
-        <h1>${BOT_NAME} WhatsApp Group Management Bot</h1>
-        <div class="status ${currentQR ? 'disconnected' : 'connected'}">
-          Status: ${currentQR ? 'Waiting for QR Scan' : 'Connected & Running'}
+        <div class="container">
+          <div class="header">
+            <h1>${BOT_NAME}</h1>
+            <p>WhatsApp Group Management Bot</p>
+          </div>
+          
+          ${qrHtml}
+          
+          <div class="info-grid">
+            <div class="info-item">
+              <h4>📊 Status</h4>
+              <p>${currentQR ? 'Waiting for QR Scan' : 'Connected & Running'}</p>
+            </div>
+            <div class="info-item">
+              <h4>⚠️ Warnings</h4>
+              <p>${Object.keys(warnings).length} stored</p>
+            </div>
+            <div class="info-item">
+              <h4>👥 Group</h4>
+              <p>${cfg.groupName || 'Not specified'}</p>
+            </div>
+            <div class="info-item">
+              <h4>👑 Owner</h4>
+              <p>${cfg.owner}</p>
+            </div>
+          </div>
+          
+          <div class="status-card">
+            <h4>Bot Features:</h4>
+            <ul style="margin-left: 20px; margin-top: 10px; color: #555;">
+              <li>Group moderation and rules enforcement</li>
+              <li>Warning system with ${cfg.warnLimit} warning limit</li>
+              <li>Automatic link protection</li>
+              <li>Flood control system</li>
+              <li>Quiet hours (${cfg.quietHours?.startHourKarachi || 0}:00 - ${cfg.quietHours?.endHourKarachi || 5}:00 Karachi Time)</li>
+              <li>Welcome and goodbye messages</li>
+            </ul>
+          </div>
         </div>
-        ${qrHtml}
-        <p>Warnings stored: ${Object.keys(warnings).length}</p>
-        <p>Group: ${cfg.groupName || 'Not specified'}</p>
-        <p>Owner: ${cfg.owner}</p>
+        
+        <script>
+          // Auto-refresh page every 10 seconds if QR code is displayed
+          if (${currentQR ? 'true' : 'false'}) {
+            setTimeout(() => {
+              window.location.reload();
+            }, 10000);
+          }
+        </script>
       </body>
     </html>
   `);
@@ -320,7 +451,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`\n🚀 ${BOT_NAME} server running on port ${PORT}`);
   console.log(`🌐 Web dashboard: http://localhost:${PORT}`);
-  console.log('\n📱 Waiting for QR code generation...\n');
+  console.log('\n📱 QR Code will appear on the web dashboard when ready...\n');
   connectToWhatsApp();
 });
 
